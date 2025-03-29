@@ -17,10 +17,31 @@ type Config struct {
 	CurrentUserName string `json:"current_user_name"`
 }
 
-// Read reads the configuration file from the given home directory
+// GetHomeDir returns the user's home directory
+func GetHomeDir() (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return homeDir, nil
+}
+
+// Read reads the configuration file from the user's home directory
 // and returns the parsed Config struct.
-func Read(homeDir string) (Config, error) {
-	configPath := filepath.Join(homeDir, ".gatorconfig.json")
+func Read(dirOverride string) (Config, error) {
+	var configDir string
+	var err error
+
+	if dirOverride != "" {
+		configDir = dirOverride
+	} else {
+		configDir, err = GetHomeDir()
+		if err != nil {
+			return Config{}, err
+		}
+	}
+
+	configPath := filepath.Join(configDir, configFileName)
 
 	data, err := os.ReadFile(configPath)
 	if err != nil {
@@ -37,7 +58,7 @@ func Read(homeDir string) (Config, error) {
 }
 
 func SetUser(homeDir string, userName string) error {
-	configPath := filepath.Join(homeDir, ".gatorconfig.json")
+	configPath := filepath.Join(homeDir, configFileName)
 
 	data, err := os.ReadFile(configPath)
 	if err != nil {
@@ -66,9 +87,21 @@ func SetUser(homeDir string, userName string) error {
 }
 
 // Write writes the given Config struct to the configuration file
-// in the given home directory.
-func Write(homeDir string, config Config) error {
-	configPath := filepath.Join(homeDir, configFileName)
+// in the specified directory or user's home directory if none provided.
+func Write(dirOverride string, config Config) error {
+	var configDir string
+	var err error
+
+	if dirOverride != "" {
+		configDir = dirOverride
+	} else {
+		configDir, err = GetHomeDir()
+		if err != nil {
+			return err
+		}
+	}
+
+	configPath := filepath.Join(configDir, configFileName)
 
 	data, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
@@ -84,7 +117,19 @@ func Write(homeDir string, config Config) error {
 }
 
 // GetConfigPath returns the path to the configuration file
-func GetConfigPath(homeDir string) string {
-	configPath := filepath.Join(homeDir, configFileName)
+func GetConfigPath(dirOverride string) string {
+	var configDir string
+
+	if dirOverride != "" {
+		configDir = dirOverride
+	} else {
+		var err error
+		configDir, err = GetHomeDir()
+		if err != nil {
+			return ""
+		}
+	}
+
+	configPath := filepath.Join(configDir, configFileName)
 	return configPath
 }

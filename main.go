@@ -9,14 +9,11 @@ import (
 )
 
 func main() {
-	// Get the current working directory instead of the home directory
-	workDir, err := os.Getwd()
-	if err != nil {
-		log.Fatalf("Error getting current directory: %v", err)
-	}
+	// Use empty string to get the home directory in config functions
+	homeDir := ""
 
-	// Read the existing configuration from the working directory
-	cfg, err := config.Read(workDir)
+	// Read the existing configuration from the home directory
+	cfg, err := config.Read(homeDir)
 	if err != nil {
 		// If config doesn't exist yet, create a new one
 		if os.IsNotExist(err) {
@@ -29,19 +26,49 @@ func main() {
 		}
 	}
 
-	// Set the current user to "Specter"
-	cfg.CurrentUserName = "Specter"
-
-	// Write the updated config back to disk
-	err = config.Write(workDir, cfg)
+	// Write the updated config back to disk in the home directory
+	err = config.Write(homeDir, cfg)
 	if err != nil {
 		log.Fatalf("Error writing config file: %v", err)
 	}
 
-	// Print updated confirmation with the full config contents
-	fmt.Println("Config updated successfully!")
-	fmt.Println("Config file contents:")
-	fmt.Printf("  Database URL: %s\n", cfg.DBURL)
-	fmt.Printf("  Current User: %s\n", cfg.CurrentUserName)
-	fmt.Printf("  Config Path: %s\n", config.GetConfigPath(workDir))
+	// Create a new instance of commands
+	cmds := &commands{}
+
+	// Register available commands
+	cmds.register("login", handlerLogin)
+
+	// Initialize application state
+	appState := &state{
+		Config: &cfg,
+	}
+
+	// If there are command-line args, process them as a command
+	if len(os.Args) > 1 {
+		cmd := command{
+			Name: os.Args[1],
+			Args: os.Args[2:],
+		}
+
+		if err := cmds.run(appState, cmd); err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Read the config again to verify changes were persisted
+		updatedCfg, err := config.Read(homeDir)
+		if err != nil {
+			fmt.Printf("Warning: Could not verify config update: %v\n", err)
+		} else {
+			fmt.Printf("Configuration updated:\n")
+			fmt.Printf("  Current User: %s\n", updatedCfg.CurrentUserName)
+			fmt.Printf("  Config Path: %s\n", config.GetConfigPath(homeDir))
+		}
+	} else {
+		// Display error message and exit with code 1 when no arguments provided
+		fmt.Println("Error: Not enough arguments")
+		fmt.Println("\nAvailable commands:")
+		fmt.Println("  login <username> - Log in as the specified user")
+		os.Exit(1)
+	}
 }
