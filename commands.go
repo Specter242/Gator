@@ -130,3 +130,24 @@ func handlerRegister(s *state, cmd command) error {
 	fmt.Printf("User %s registered and logged in\n", username)
 	return nil
 }
+
+// handlereset is a command handler for the "reset" command
+// it deletes all users from the database
+func handlerReset(s *state, cmd command) error {
+	// Check if the command has the correct number of arguments
+	if len(cmd.Args) != 0 {
+		return fmt.Errorf("usage: %s", cmd.Name)
+	}
+
+	// Use the database to delete all users
+	ctx := context.Background()
+
+	// Delete all users from the database
+	err := s.db.Reset(ctx)
+	if err != nil {
+		return fmt.Errorf("error deleting all users: %v", err)
+	}
+
+	fmt.Printf("All users deleted\n")
+	return nil
+}
