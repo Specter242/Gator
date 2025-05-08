@@ -131,7 +131,7 @@ func handlerRegister(s *state, cmd command) error {
 	return nil
 }
 
-// handlereset is a command handler for the "reset" command
+// handlerReset is a command handler for the "reset" command
 // it deletes all users from the database
 func handlerReset(s *state, cmd command) error {
 	// Check if the command has the correct number of arguments
@@ -149,5 +149,37 @@ func handlerReset(s *state, cmd command) error {
 	}
 
 	fmt.Printf("All users deleted\n")
+	return nil
+}
+
+// handlerGetUsers is a command handler for the "getusers" command
+// It retrieves all users from the database
+func handlerGetUsers(s *state, cmd command) error {
+	// Check if the command has the correct number of arguments
+	if len(cmd.Args) != 0 {
+		return fmt.Errorf("usage: %s", cmd.Name)
+	}
+
+	// Use the database to get all users
+	ctx := context.Background()
+
+	// Get all users from the database
+	users, err := s.db.GetUsers(ctx, database.GetUsersParams{
+		Limit:  100,
+		Offset: 0,
+	})
+
+	if err != nil {
+		return fmt.Errorf("error getting all users: %v", err)
+	}
+
+	fmt.Printf("All users:")
+	for _, user := range users {
+		fmt.Printf("\n- %s", user.Name)
+		if user.Name == s.Config.CurrentUserName {
+			fmt.Printf(" (current)")
+		}
+	}
+	fmt.Printf("\n")
 	return nil
 }

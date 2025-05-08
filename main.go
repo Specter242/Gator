@@ -52,6 +52,7 @@ func main() {
 	cmds.register("login", handlerLogin)
 	cmds.register("register", handlerRegister)
 	cmds.register("reset", handlerReset)
+	cmds.register("users", handlerGetUsers)
 
 	// Initialize application state
 	appState := &state{
@@ -87,6 +88,7 @@ func main() {
 		fmt.Println("  login <username> - Log in as the specified user")
 		fmt.Println("  register <username> - Register a new user")
 		fmt.Println("  reset - Reset the database")
+		fmt.Println("  users - Get all users")
 		os.Exit(1)
 	}
 }
