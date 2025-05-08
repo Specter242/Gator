@@ -1,11 +1,14 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"os"
 
 	"github.com/Specter242/Gator/internal/config"
+	"github.com/Specter242/Gator/internal/database"
+	_ "github.com/lib/pq" // Required for PostgreSQL driver
 )
 
 func main() {
@@ -26,6 +29,16 @@ func main() {
 		}
 	}
 
+	// Open a database connection
+	db, err := sql.Open("postgres", cfg.DBURL)
+	if err != nil {
+		log.Fatalf("Error opening database: %v", err)
+	}
+	defer db.Close() // Ensure the database connection is closed
+
+	// Create a new instance of the Queries struct with the database connection
+	dbQueries := database.New(db)
+
 	// Write the updated config back to disk in the home directory
 	err = config.Write(homeDir, cfg)
 	if err != nil {
@@ -37,9 +50,11 @@ func main() {
 
 	// Register available commands
 	cmds.register("login", handlerLogin)
+	cmds.register("register", handlerRegister)
 
 	// Initialize application state
 	appState := &state{
+		db:     dbQueries,
 		Config: &cfg,
 	}
 
@@ -69,6 +84,7 @@ func main() {
 		fmt.Println("Error: Not enough arguments")
 		fmt.Println("\nAvailable commands:")
 		fmt.Println("  login <username> - Log in as the specified user")
+		fmt.Println("  register <username> - Register a new user")
 		os.Exit(1)
 	}
 }

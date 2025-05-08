@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/Specter242/Gator/internal/config"
+	"github.com/Specter242/Gator/internal/database"
 )
 
 // State holds a pointer to a config.Config struct
 type state struct {
+	db     *database.Queries
 	Config *config.Config
 }
 
@@ -57,6 +60,16 @@ func handlerLogin(s *state, cmd command) error {
 		return fmt.Errorf("usage: %s <username>", cmd.Name)
 	}
 
+	// Get the username from the command arguments
+	username := cmd.Args[0]
+
+	// Check if the user exists in the database
+	ctx := context.Background()
+	_, err := s.db.GetUser(ctx, username)
+	if err != nil {
+		return fmt.Errorf("user not found: %s", username)
+	}
+
 	// Set the current user in the config
 	s.Config.CurrentUserName = cmd.Args[0]
 
@@ -73,5 +86,47 @@ func handlerLogin(s *state, cmd command) error {
 	}
 
 	fmt.Printf("Logged in as %s\n", s.Config.CurrentUserName)
+	return nil
+}
+
+// handlerRegister is a command handler for the "register" command
+// It creates a new user and stores it in the database
+// It takes a pointer to the state and a command as arguments
+// and returns an error if any issues occur during the process
+func handlerRegister(s *state, cmd command) error {
+	// Check if the command has the correct number of arguments
+	if len(cmd.Args) != 1 {
+		return fmt.Errorf("usage: %s <username>", cmd.Name)
+	}
+
+	// Get the username from the command arguments
+	username := cmd.Args[0]
+
+	// Use the database to create a new user
+	// We need to add context for the database operation
+	ctx := context.Background()
+
+	// Create the user in the database
+	_, err := s.db.CreateUser(ctx, username)
+	if err != nil {
+		return fmt.Errorf("error creating user: %v", err)
+	}
+
+	// Set the current user in the config
+	s.Config.CurrentUserName = username
+
+	// Get home directory
+	homeDir, err := config.GetHomeDir()
+	if err != nil {
+		return fmt.Errorf("error getting home directory: %v", err)
+	}
+
+	// Write the updated config with the new username to the home directory
+	err = config.Write(homeDir, *s.Config)
+	if err != nil {
+		return fmt.Errorf("error writing config file: %v", err)
+	}
+
+	fmt.Printf("User %s registered and logged in\n", username)
 	return nil
 }
