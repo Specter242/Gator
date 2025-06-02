@@ -231,36 +231,20 @@ func handlerFetchFeed(s *state, cmd command) error {
 	return nil
 }
 
-func handlerAddFeed(s *state, cmd command) error {
-	// Check if the command has the correct number of arguments
+func handlerAddFeed(s *state, cmd command, user database.User) error {
 	if len(cmd.Args) != 2 {
 		return fmt.Errorf("usage: %s <name> <feed_url>", cmd.Name)
 	}
-
-	// Get the name and feed URL from the command arguments
 	feedName := cmd.Args[0]
 	feedURL := cmd.Args[1]
 
-	// Get current user from the config and attach it to the feed
-	currentUser := s.Config.CurrentUserName
-	if currentUser == "" {
-		return fmt.Errorf("no user logged in, please log in first")
-	}
-
-	// Fetch the user ID from the database
 	ctx := context.Background()
-	user, err := s.db.GetUser(ctx, currentUser)
-	if err != nil {
-		return fmt.Errorf("error getting user: %v", err)
-	}
 
-	// Fetch the RSS feed
 	feed, err := fetchFeed(ctx, feedURL)
 	if err != nil {
 		return fmt.Errorf("error fetching feed: %v", err)
 	}
 
-	// Create the feed in the database
 	feedRow, err := s.db.CreateFeed(ctx, database.CreateFeedParams{
 		Name:   feedName,
 		Url:    feedURL,
@@ -270,17 +254,15 @@ func handlerAddFeed(s *state, cmd command) error {
 		return fmt.Errorf("error creating feed: %v", err)
 	}
 
-	// add to feed_follows
 	_, err = s.db.CreateFeedFollow(ctx, database.CreateFeedFollowParams{
 		UserID: user.ID,
-		FeedID: feedRow.ID, // <-- Use the feed's ID here!
+		FeedID: feedRow.ID,
 	})
 	if err != nil {
 		return fmt.Errorf("error creating feed follow: %v", err)
 	}
 
 	fmt.Printf("Successfully fetched and processed feed: %s\n", feed.Channel.Title)
-
 	return nil
 }
 
@@ -311,31 +293,18 @@ func handlerFeeds(s *state, cmd command) error {
 	return nil
 }
 
-func handlerFollow(s *state, cmd command) error {
-	// Check if the command has the correct number of arguments
+func handlerFollow(s *state, cmd command, user database.User) error {
 	if len(cmd.Args) != 1 {
 		return fmt.Errorf("usage: %s <url>", cmd.Name)
 	}
-
 	feedURL := cmd.Args[0]
-	currentUser := s.Config.CurrentUserName
-	if currentUser == "" {
-		return fmt.Errorf("no user logged in, please log in first")
-	}
-
 	ctx := context.Background()
-	user, err := s.db.GetUser(ctx, currentUser)
-	if err != nil {
-		return fmt.Errorf("error getting user: %v", err)
-	}
 
-	// Fetch the RSS feed (for validation, optional)
-	_, err = fetchFeed(ctx, feedURL)
+	_, err := fetchFeed(ctx, feedURL)
 	if err != nil {
 		return fmt.Errorf("error fetching feed: %v", err)
 	}
 
-	// Find the feed in the database (or create it if it doesn't exist)
 	feeds, err := s.db.GetFeeds(ctx, database.GetFeedsParams{
 		Limit:  100,
 		Offset: 0,
@@ -355,7 +324,6 @@ func handlerFollow(s *state, cmd command) error {
 		return fmt.Errorf("feed not found in database, please add it first")
 	}
 
-	// Create the feed follow entry
 	_, err = s.db.CreateFeedFollow(ctx, database.CreateFeedFollowParams{
 		UserID: user.ID,
 		FeedID: dbFeed.ID,
@@ -367,22 +335,11 @@ func handlerFollow(s *state, cmd command) error {
 	return nil
 }
 
-func handlerFollowing(s *state, cmd command) error {
-	// Check if the command has the correct number of arguments
+func handlerFollowing(s *state, cmd command, user database.User) error {
 	if len(cmd.Args) != 0 {
 		return fmt.Errorf("usage: %s", cmd.Name)
 	}
-
-	currentUser := s.Config.CurrentUserName
-	if currentUser == "" {
-		return fmt.Errorf("no user logged in, please log in first")
-	}
-
 	ctx := context.Background()
-	user, err := s.db.GetUser(ctx, currentUser)
-	if err != nil {
-		return fmt.Errorf("error getting user: %v", err)
-	}
 	userid := database.GetFeedFollowsForUserParams{
 		UserID: user.ID,
 		Limit:  100,
