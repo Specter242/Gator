@@ -54,6 +54,7 @@ func main() {
 	cmds.register("reset", handlerReset)
 	cmds.register("users", handlerGetUsers)
 	cmds.register("agg", handlerFetchFeed)
+	cmds.register("addfeed", handlerAddFeed)
 
 	// Initialize application state
 	appState := &state{
@@ -91,6 +92,8 @@ func main() {
 		fmt.Println("  reset - Reset the database")
 		fmt.Println("  users - Get all users")
 		fmt.Println("  agg - run aggregator service")
+		fmt.Println("  addfeed <name> <url> - Add a new feed with the specified name and URL")
+		fmt.Println("  help - Show this help message")
 		os.Exit(1)
 	}
 }

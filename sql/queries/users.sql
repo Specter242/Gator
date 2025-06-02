@@ -14,3 +14,8 @@ DELETE FROM users;
 SELECT * FROM users
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2;
+
+-- name: CreateFeed :one
+INSERT INTO feeds (name, url, user_id)
+VALUES ($1, $2, $3)
+RETURNING id, created_at, updated_at, name, url, user_id;

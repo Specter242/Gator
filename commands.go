@@ -231,6 +231,50 @@ func handlerFetchFeed(s *state, cmd command) error {
 	return nil
 }
 
+func handlerAddFeed(s *state, cmd command) error {
+	// Check if the command has the correct number of arguments
+	if len(cmd.Args) != 2 {
+		return fmt.Errorf("usage: %s <name> <feed_url>", cmd.Name)
+	}
+
+	// Get the name and feed URL from the command arguments
+	feedName := cmd.Args[0]
+	feedURL := cmd.Args[1]
+
+	// Get current user from the config and attach it to the feed
+	currentUser := s.Config.CurrentUserName
+	if currentUser == "" {
+		return fmt.Errorf("no user logged in, please log in first")
+	}
+
+	// Fetch the user ID from the database
+	ctx := context.Background()
+	user, err := s.db.GetUser(ctx, currentUser)
+	if err != nil {
+		return fmt.Errorf("error getting user: %v", err)
+	}
+
+	// Fetch the RSS feed
+	feed, err := fetchFeed(ctx, feedURL)
+	if err != nil {
+		return fmt.Errorf("error fetching feed: %v", err)
+	}
+
+	// Create the feed in the database
+	_, err = s.db.CreateFeed(ctx, database.CreateFeedParams{
+		Name:   feedName,
+		Url:    feedURL,
+		UserID: user.ID,
+	})
+	if err != nil {
+		return fmt.Errorf("error creating feed: %v", err)
+	}
+
+	fmt.Printf("Successfully fetched and processed feed: %s\n", feed.Channel.Title)
+
+	return nil
+}
+
 func fetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
