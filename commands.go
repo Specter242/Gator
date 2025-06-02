@@ -2,7 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/xml"
 	"fmt"
+	"html"
+	"io"
+	"net/http"
+	"time"
 
 	"github.com/Specter242/Gator/internal/config"
 	"github.com/Specter242/Gator/internal/database"
@@ -13,19 +18,30 @@ type state struct {
 	db     *database.Queries
 	Config *config.Config
 }
-
-// command represents a command with its name and arguments
-// It is used to parse and execute commands in the application
 type command struct {
-	// Name is the name of the command
 	Name string
-	// Args are the arguments for the command
 	Args []string
 }
 
 // commands is a map of command names to their respective handler functions
 type commands struct {
 	Commandmap map[string]func(*state, command) error
+}
+
+type RSSFeed struct {
+	Channel struct {
+		Title       string    `xml:"title"`
+		Link        string    `xml:"link"`
+		Description string    `xml:"description"`
+		Item        []RSSItem `xml:"item"`
+	} `xml:"channel"`
+}
+
+type RSSItem struct {
+	Title       string `xml:"title"`
+	Link        string `xml:"link"`
+	Description string `xml:"description"`
+	PubDate     string `xml:"pubDate"`
 }
 
 // register adds a new command handler to the command map
@@ -182,4 +198,71 @@ func handlerGetUsers(s *state, cmd command) error {
 	}
 	fmt.Printf("\n")
 	return nil
+}
+
+func handlerFetchFeed(s *state, cmd command) error {
+	// Check if the command has the correct number of arguments
+	if len(cmd.Args) != 0 {
+		return fmt.Errorf("usage: %s <feed_url>", cmd.Name)
+	}
+
+	// Get the feed URL from the command arguments
+	feedURL := "https://www.wagslane.dev/index.xml"
+
+	// Fetch the RSS feed
+	ctx := context.Background()
+	feed, err := fetchFeed(ctx, feedURL)
+	if err != nil {
+		return fmt.Errorf("error fetching feed: %v", err)
+	}
+
+	// Print the feed title and description
+	fmt.Printf("Feed Title: %s\n", feed.Channel.Title)
+	fmt.Printf("Feed Description: %s\n", feed.Channel.Description)
+
+	// Print each item in the feed
+	for _, item := range feed.Channel.Item {
+		fmt.Printf("\nItem Title: %s\n", item.Title)
+		fmt.Printf("Item Link: %s\n", item.Link)
+		fmt.Printf("Item Description: %s\n", item.Description)
+		fmt.Printf("Item PubDate: %s\n", item.PubDate)
+	}
+
+	return nil
+}
+
+func fetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse // Prevent redirects
+		},
+		Timeout: 3 * time.Second,
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", feedURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request: %v", err)
+	}
+	req.Header.Set("User-Agent", "Gator/1.0")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching feed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %v", err)
+	}
+
+	var feed RSSFeed
+	if err := xml.Unmarshal(body, &feed); err != nil {
+		return nil, fmt.Errorf("error unmarshalling XML: %v", err)
+	}
+
+	feed.Channel.Title = html.UnescapeString(feed.Channel.Title)
+	feed.Channel.Description = html.UnescapeString(feed.Channel.Description)
+
+	return &feed, nil
 }

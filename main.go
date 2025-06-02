@@ -53,6 +53,7 @@ func main() {
 	cmds.register("register", handlerRegister)
 	cmds.register("reset", handlerReset)
 	cmds.register("users", handlerGetUsers)
+	cmds.register("agg", handlerFetchFeed)
 
 	// Initialize application state
 	appState := &state{
@@ -89,6 +90,7 @@ func main() {
 		fmt.Println("  register <username> - Register a new user")
 		fmt.Println("  reset - Reset the database")
 		fmt.Println("  users - Get all users")
+		fmt.Println("  agg - run aggregator service")
 		os.Exit(1)
 	}
 }
