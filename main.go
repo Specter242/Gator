@@ -56,6 +56,8 @@ func main() {
 	cmds.register("agg", handlerFetchFeed)
 	cmds.register("addfeed", handlerAddFeed)
 	cmds.register("feeds", handlerFeeds)
+	cmds.register("follow", handlerFollow)
+	cmds.register("following", handlerFollowing)
 
 	// Initialize application state
 	appState := &state{
@@ -96,6 +98,8 @@ func main() {
 		fmt.Println("  agg - run aggregator service")
 		fmt.Println("  addfeed <name> <url> - Add a new feed with the specified name and URL")
 		fmt.Println("  feeds - List all feeds")
+		fmt.Println("  follow <url> - Follow a feed by URL")
+		fmt.Println("  following - List all followed feeds")
 		fmt.Println("  help - Show this help message")
 		os.Exit(1)
 	}
