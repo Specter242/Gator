@@ -289,6 +289,21 @@ func (q *Queries) GetUsers(ctx context.Context, arg GetUsersParams) ([]User, err
 	return items, nil
 }
 
+const removeFeedFollow = `-- name: RemoveFeedFollow :exec
+DELETE FROM feed_follows
+WHERE user_id = $1 AND feed_id = $2
+`
+
+type RemoveFeedFollowParams struct {
+	UserID int32
+	FeedID int32
+}
+
+func (q *Queries) RemoveFeedFollow(ctx context.Context, arg RemoveFeedFollowParams) error {
+	_, err := q.db.ExecContext(ctx, removeFeedFollow, arg.UserID, arg.FeedID)
+	return err
+}
+
 const reset = `-- name: Reset :exec
 DELETE FROM users
 `

@@ -54,3 +54,7 @@ LIMIT $2 OFFSET $3;
 SELECT * FROM feeds
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2;
+
+-- name: RemoveFeedFollow :exec
+DELETE FROM feed_follows
+WHERE user_id = $1 AND feed_id = $2;

@@ -358,6 +358,44 @@ func handlerFollowing(s *state, cmd command, user database.User) error {
 	return nil
 }
 
+func handlerUnfollow(s *state, cmd command, user database.User) error {
+	if len(cmd.Args) != 1 {
+		return fmt.Errorf("usage: %s <url>", cmd.Name)
+	}
+	feedURL := cmd.Args[0]
+	ctx := context.Background()
+
+	feeds, err := s.db.GetFeeds(ctx, database.GetFeedsParams{
+		Limit:  100,
+		Offset: 0,
+	})
+	if err != nil {
+		return fmt.Errorf("error getting feeds: %v", err)
+	}
+
+	var dbFeed *database.Feed
+	for _, f := range feeds {
+		if f.Url == feedURL {
+			dbFeed = &f
+			break
+		}
+	}
+	if dbFeed == nil {
+		return fmt.Errorf("feed not found in database")
+	}
+
+	err = s.db.RemoveFeedFollow(ctx, database.RemoveFeedFollowParams{
+		UserID: user.ID,
+		FeedID: dbFeed.ID,
+	})
+	if err != nil {
+		return fmt.Errorf("error deleting feed follow: %v", err)
+	}
+
+	fmt.Printf("%s successfully unfollowed feed: %s\n", user.Name, dbFeed.Name)
+	return nil
+}
+
 func fetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
