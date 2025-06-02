@@ -275,6 +275,33 @@ func handlerAddFeed(s *state, cmd command) error {
 	return nil
 }
 
+func handlerFeeds(s *state, cmd command) error {
+	// Check if the command has the correct number of arguments
+	if len(cmd.Args) != 0 {
+		return fmt.Errorf("usage: %s", cmd.Name)
+	}
+
+	// Get all feeds
+	feeds, err := s.db.GetFeeds(context.Background(), database.GetFeedsParams{
+		Limit:  100,
+		Offset: 0,
+	})
+	if err != nil {
+		return fmt.Errorf("error getting feeds: %v", err)
+	}
+
+	for _, feed := range feeds {
+		ctx := context.Background()
+		user, err := s.db.GetUserById(ctx, feed.UserID)
+		if err != nil {
+			return fmt.Errorf("error getting user for feed %s: %v", feed.Name, err)
+		}
+		name := user.Name
+		fmt.Printf("- %s (%s) %s\n", feed.Name, feed.Url, name)
+	}
+	return nil
+}
+
 func fetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {

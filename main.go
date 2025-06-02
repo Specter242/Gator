@@ -55,6 +55,7 @@ func main() {
 	cmds.register("users", handlerGetUsers)
 	cmds.register("agg", handlerFetchFeed)
 	cmds.register("addfeed", handlerAddFeed)
+	cmds.register("feeds", handlerFeeds)
 
 	// Initialize application state
 	appState := &state{
@@ -75,14 +76,15 @@ func main() {
 		}
 
 		// Read the config again to verify changes were persisted
-		updatedCfg, err := config.Read(homeDir)
-		if err != nil {
-			fmt.Printf("Warning: Could not verify config update: %v\n", err)
-		} else {
-			fmt.Printf("Configuration updated:\n")
-			fmt.Printf("  Current User: %s\n", updatedCfg.CurrentUserName)
-			fmt.Printf("  Config Path: %s\n", config.GetConfigPath(homeDir))
-		}
+		//updatedCfg, err := config.Read(homeDir)
+		//if err != nil {
+		//	fmt.Printf("Warning: Could not verify config update: %v\n", err)
+		//} else {
+		//	fmt.Printf("Configuration updated:\n")
+		//fmt.Printf("  Current User: %s\n", updatedCfg.CurrentUserName)
+		//	fmt.Printf("  Config Path: %s\n", config.GetConfigPath(homeDir))
+		//}
+
 	} else {
 		// Display error message and exit with code 1 when no arguments provided
 		fmt.Println("Error: Not enough arguments")
@@ -93,6 +95,7 @@ func main() {
 		fmt.Println("  users - Get all users")
 		fmt.Println("  agg - run aggregator service")
 		fmt.Println("  addfeed <name> <url> - Add a new feed with the specified name and URL")
+		fmt.Println("  feeds - List all feeds")
 		fmt.Println("  help - Show this help message")
 		os.Exit(1)
 	}

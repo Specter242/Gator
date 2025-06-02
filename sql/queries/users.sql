@@ -7,6 +7,10 @@ RETURNING id, created_at, updated_at, name;
 SELECT * FROM users
 WHERE name = $1;
 
+-- name: GetUserById :one
+SELECT * FROM users
+WHERE id = $1;
+
 -- name: Reset :exec
 DELETE FROM users;
 
@@ -19,3 +23,8 @@ LIMIT $1 OFFSET $2;
 INSERT INTO feeds (name, url, user_id)
 VALUES ($1, $2, $3)
 RETURNING id, created_at, updated_at, name, url, user_id;
+
+-- name: GetFeeds :many
+SELECT * FROM feeds
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2;
