@@ -58,3 +58,15 @@ LIMIT $1 OFFSET $2;
 -- name: RemoveFeedFollow :exec
 DELETE FROM feed_follows
 WHERE user_id = $1 AND feed_id = $2;
+
+-- name: LastFetchedAt :exec
+UPDATE feeds
+SET last_fetched_at = NOW(),
+    updated_at = NOW()
+WHERE id = $1;
+
+-- name: GetNextFeedToFetch :one
+SELECT * FROM feeds
+WHERE last_fetched_at IS NULL OR last_fetched_at < NOW() - INTERVAL '1 hour'
+ORDER BY last_fetched_at ASC
+LIMIT 1;

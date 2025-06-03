@@ -59,6 +59,8 @@ func main() {
 	cmds.register("follow", middlewareLoggedIn(handlerFollow))
 	cmds.register("following", middlewareLoggedIn(handlerFollowing))
 	cmds.register("unfollow", middlewareLoggedIn(handlerUnfollow))
+	cmds.register("help", handlerHelp)
+	cmds.register("scrapefeeds", handlerScrapeFeeds)
 
 	// Initialize application state
 	appState := &state{
@@ -102,6 +104,7 @@ func main() {
 		fmt.Println("  follow <url> - Follow a feed by URL")
 		fmt.Println("  following - List all followed feeds")
 		fmt.Println("  unfollow <url> - Unfollow a feed by URL")
+		fmt.Println("  scrapefeeds - Scrape all feeds")
 		fmt.Println("  help - Show this help message")
 		os.Exit(1)
 	}

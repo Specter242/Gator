@@ -202,33 +202,21 @@ func handlerGetUsers(s *state, cmd command) error {
 
 func handlerFetchFeed(s *state, cmd command) error {
 	// Check if the command has the correct number of arguments
-	if len(cmd.Args) != 0 {
-		return fmt.Errorf("usage: %s <feed_url>", cmd.Name)
+	if len(cmd.Args) != 1 {
+		return fmt.Errorf("usage: %s <time_between_requests>", cmd.Name)
 	}
 
-	// Get the feed URL from the command arguments
-	feedURL := "https://www.wagslane.dev/index.xml"
-
-	// Fetch the RSS feed
-	ctx := context.Background()
-	feed, err := fetchFeed(ctx, feedURL)
+	tick, err := time.ParseDuration(cmd.Args[0])
 	if err != nil {
-		return fmt.Errorf("error fetching feed: %v", err)
+		return fmt.Errorf("invalid time format: %v", err)
 	}
 
-	// Print the feed title and description
-	fmt.Printf("Feed Title: %s\n", feed.Channel.Title)
-	fmt.Printf("Feed Description: %s\n", feed.Channel.Description)
-
-	// Print each item in the feed
-	for _, item := range feed.Channel.Item {
-		fmt.Printf("\nItem Title: %s\n", item.Title)
-		fmt.Printf("Item Link: %s\n", item.Link)
-		fmt.Printf("Item Description: %s\n", item.Description)
-		fmt.Printf("Item PubDate: %s\n", item.PubDate)
+	println("Collecting feeds every %s\n", tick)
+	ticker := time.NewTicker(tick)
+	defer ticker.Stop()
+	for ; ; <-ticker.C {
+		handlerScrapeFeeds(s, command{Name: "scrapefeeds"})
 	}
-
-	return nil
 }
 
 func handlerAddFeed(s *state, cmd command, user database.User) error {
@@ -393,6 +381,54 @@ func handlerUnfollow(s *state, cmd command, user database.User) error {
 	}
 
 	fmt.Printf("%s successfully unfollowed feed: %s\n", user.Name, dbFeed.Name)
+	return nil
+}
+
+func handlerHelp(s *state, cmd command) error {
+	if len(cmd.Args) != 0 {
+		return fmt.Errorf("usage: %s", cmd.Name)
+	}
+
+	fmt.Println("Available commands:")
+	fmt.Println("  login <username> - Log in as the specified user")
+	fmt.Println("  register <username> - Register a new user")
+	fmt.Println("  reset - Reset the database")
+	fmt.Println("  users - Get all users")
+	fmt.Println("  agg - run aggregator service")
+	fmt.Println("  addfeed <name> <url> - Add a new feed with the specified name and URL")
+	fmt.Println("  feeds - List all feeds")
+	fmt.Println("  follow <url> - Follow a feed by URL")
+	fmt.Println("  following - List all followed feeds")
+	fmt.Println("  unfollow <url> - Unfollow a feed by URL")
+	fmt.Println("  help - Show this help message")
+
+	return nil
+}
+
+func handlerScrapeFeeds(s *state, cmd command) error {
+	if len(cmd.Args) != 0 {
+		return fmt.Errorf("usage: %s", cmd.Name)
+	}
+
+	next, err := s.db.GetNextFeedToFetch(context.Background())
+	if err != nil {
+		return fmt.Errorf("error getting next feed to fetch: %v", err)
+	}
+
+	err = s.db.LastFetchedAt(context.Background(), next.ID)
+	if err != nil {
+		return fmt.Errorf("error marking feed as fetched: %v", err)
+	}
+
+	fetch, err := fetchFeed(context.Background(), next.Url)
+	if err != nil {
+		return fmt.Errorf("error fetching feed: %v", err)
+	}
+
+	for _, item := range fetch.Channel.Item {
+		println("Item Title:", item.Title)
+	}
+
 	return nil
 }
 

@@ -22,9 +22,18 @@ type CreateFeedParams struct {
 	UserID int32
 }
 
-func (q *Queries) CreateFeed(ctx context.Context, arg CreateFeedParams) (Feed, error) {
+type CreateFeedRow struct {
+	ID        int32
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Name      string
+	Url       string
+	UserID    int32
+}
+
+func (q *Queries) CreateFeed(ctx context.Context, arg CreateFeedParams) (CreateFeedRow, error) {
 	row := q.db.QueryRowContext(ctx, createFeed, arg.Name, arg.Url, arg.UserID)
-	var i Feed
+	var i CreateFeedRow
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -176,7 +185,7 @@ func (q *Queries) GetFeedFollowsForUser(ctx context.Context, arg GetFeedFollowsF
 }
 
 const getFeeds = `-- name: GetFeeds :many
-SELECT id, created_at, updated_at, name, url, user_id FROM feeds
+SELECT id, created_at, updated_at, name, url, user_id, last_fetched_at FROM feeds
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2
 `
@@ -202,6 +211,7 @@ func (q *Queries) GetFeeds(ctx context.Context, arg GetFeedsParams) ([]Feed, err
 			&i.Name,
 			&i.Url,
 			&i.UserID,
+			&i.LastFetchedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -214,6 +224,28 @@ func (q *Queries) GetFeeds(ctx context.Context, arg GetFeedsParams) ([]Feed, err
 		return nil, err
 	}
 	return items, nil
+}
+
+const getNextFeedToFetch = `-- name: GetNextFeedToFetch :one
+SELECT id, created_at, updated_at, name, url, user_id, last_fetched_at FROM feeds
+WHERE last_fetched_at IS NULL OR last_fetched_at < NOW() - INTERVAL '1 hour'
+ORDER BY last_fetched_at ASC
+LIMIT 1
+`
+
+func (q *Queries) GetNextFeedToFetch(ctx context.Context) (Feed, error) {
+	row := q.db.QueryRowContext(ctx, getNextFeedToFetch)
+	var i Feed
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
+		&i.Url,
+		&i.UserID,
+		&i.LastFetchedAt,
+	)
+	return i, err
 }
 
 const getUser = `-- name: GetUser :one
@@ -287,6 +319,18 @@ func (q *Queries) GetUsers(ctx context.Context, arg GetUsersParams) ([]User, err
 		return nil, err
 	}
 	return items, nil
+}
+
+const lastFetchedAt = `-- name: LastFetchedAt :exec
+UPDATE feeds
+SET last_fetched_at = NOW(),
+    updated_at = NOW()
+WHERE id = $1
+`
+
+func (q *Queries) LastFetchedAt(ctx context.Context, id int32) error {
+	_, err := q.db.ExecContext(ctx, lastFetchedAt, id)
+	return err
 }
 
 const removeFeedFollow = `-- name: RemoveFeedFollow :exec
