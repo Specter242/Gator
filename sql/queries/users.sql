@@ -70,3 +70,20 @@ SELECT * FROM feeds
 WHERE last_fetched_at IS NULL OR last_fetched_at < NOW() - INTERVAL '1 hour'
 ORDER BY last_fetched_at ASC
 LIMIT 1;
+
+-- name: CreatePost :one
+INSERT INTO posts (title, url, description, published_at, feed_id)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, created_at, updated_at, title, url, description, published_at, feed_id;
+
+-- name: GetPostsForUser :many
+SELECT
+    posts.*,
+    feeds.name AS feed_name,
+    users.name AS user_name
+FROM posts
+JOIN feeds ON posts.feed_id = feeds.id
+JOIN users ON feeds.user_id = users.id
+WHERE users.id = $1
+ORDER BY posts.published_at DESC
+LIMIT $2 OFFSET $3;

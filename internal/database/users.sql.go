@@ -7,6 +7,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"time"
 )
 
@@ -104,6 +105,42 @@ func (q *Queries) CreateFeedFollow(ctx context.Context, arg CreateFeedFollowPara
 		return nil, err
 	}
 	return items, nil
+}
+
+const createPost = `-- name: CreatePost :one
+INSERT INTO posts (title, url, description, published_at, feed_id)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, created_at, updated_at, title, url, description, published_at, feed_id
+`
+
+type CreatePostParams struct {
+	Title       string
+	Url         string
+	Description sql.NullString
+	PublishedAt time.Time
+	FeedID      int32
+}
+
+func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, error) {
+	row := q.db.QueryRowContext(ctx, createPost,
+		arg.Title,
+		arg.Url,
+		arg.Description,
+		arg.PublishedAt,
+		arg.FeedID,
+	)
+	var i Post
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Title,
+		&i.Url,
+		&i.Description,
+		&i.PublishedAt,
+		&i.FeedID,
+	)
+	return i, err
 }
 
 const createUser = `-- name: CreateUser :one
@@ -246,6 +283,72 @@ func (q *Queries) GetNextFeedToFetch(ctx context.Context) (Feed, error) {
 		&i.LastFetchedAt,
 	)
 	return i, err
+}
+
+const getPostsForUser = `-- name: GetPostsForUser :many
+SELECT
+    posts.id, posts.created_at, posts.updated_at, posts.title, posts.url, posts.description, posts.published_at, posts.feed_id,
+    feeds.name AS feed_name,
+    users.name AS user_name
+FROM posts
+JOIN feeds ON posts.feed_id = feeds.id
+JOIN users ON feeds.user_id = users.id
+WHERE users.id = $1
+ORDER BY posts.published_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type GetPostsForUserParams struct {
+	ID     int32
+	Limit  int32
+	Offset int32
+}
+
+type GetPostsForUserRow struct {
+	ID          int32
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Title       string
+	Url         string
+	Description sql.NullString
+	PublishedAt time.Time
+	FeedID      int32
+	FeedName    string
+	UserName    string
+}
+
+func (q *Queries) GetPostsForUser(ctx context.Context, arg GetPostsForUserParams) ([]GetPostsForUserRow, error) {
+	rows, err := q.db.QueryContext(ctx, getPostsForUser, arg.ID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPostsForUserRow
+	for rows.Next() {
+		var i GetPostsForUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Title,
+			&i.Url,
+			&i.Description,
+			&i.PublishedAt,
+			&i.FeedID,
+			&i.FeedName,
+			&i.UserName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getUser = `-- name: GetUser :one

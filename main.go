@@ -61,6 +61,7 @@ func main() {
 	cmds.register("unfollow", middlewareLoggedIn(handlerUnfollow))
 	cmds.register("help", handlerHelp)
 	cmds.register("scrapefeeds", handlerScrapeFeeds)
+	cmds.register("browse", handlerBrowse)
 
 	// Initialize application state
 	appState := &state{
@@ -106,6 +107,7 @@ func main() {
 		fmt.Println("  unfollow <url> - Unfollow a feed by URL")
 		fmt.Println("  scrapefeeds - Scrape all feeds")
 		fmt.Println("  help - Show this help message")
+		fmt.Println("  browse - Browse feeds in the database")
 		os.Exit(1)
 	}
 }
